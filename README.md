@@ -1,1 +1,1 @@
-# inverted-index-search
+# Inverted index search
