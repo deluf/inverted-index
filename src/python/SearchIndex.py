@@ -1,10 +1,20 @@
 from json import loads
+from re import sub
 
 index = dict(loads(open('index.json', 'r').read()))
 
 result = set()
 first = True
 for word in input().split():
+    
+    word = sub('[^A-Za-z0-9\']+', '', word)
+
+    if len(word) == 0:
+        continue
+
+    word = word.lower()
+    
+
     if not word in index:
         result.clear()
         break

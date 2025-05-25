@@ -1,6 +1,7 @@
 from os import listdir
 from os.path import isfile
 from json import dumps
+from re import sub
 
 index = dict()
 
@@ -12,6 +13,13 @@ for file in listdir(path='./TestData'):
             for x in f:
                 for word in x.split():
                     
+                    word = sub('[^A-Za-z0-9\']+', '', word)
+
+                    if len(word) == 0:
+                        continue
+
+                    word = word.lower()
+
                     if not word in index:
                         index.update([(word, dict())])
 
