@@ -12,9 +12,10 @@ public class InvertedIndexItem implements Writable, Comparable<InvertedIndexItem
     private String filename;
     private int count;
 
-    public InvertedIndexItem(String filename, int count)
+    public InvertedIndexItem() {}
+
+    public InvertedIndexItem(int count)
     {
-        this.filename = filename;
         this.count = count;
     }
 
@@ -31,6 +32,11 @@ public class InvertedIndexItem implements Writable, Comparable<InvertedIndexItem
     public void setFilename(String filename)
     {
         this.filename = filename;
+    }
+
+    public void setCount(int count)
+    {
+        this.count = count;
     }
 
     @Override
