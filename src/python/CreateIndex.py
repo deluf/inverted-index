@@ -1,6 +1,5 @@
 from os import listdir
 from os.path import isfile
-from json import dumps
 from re import sub
 
 index = dict()
@@ -28,4 +27,10 @@ for file in listdir(path='./TestData'):
                     else:
                         index[word].update([(file, 1)])
 
-print(dumps(index), file=open("index.json", "w"))
+indexFile=open("./IndexFiles/index.txt", "w")
+
+for word, list in index.items():
+    out = word
+    for file, count in list.items():
+        out += "\t" + file + ":" + str(count)
+    print(out, file=indexFile)
