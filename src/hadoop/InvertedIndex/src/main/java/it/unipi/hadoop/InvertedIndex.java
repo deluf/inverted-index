@@ -83,7 +83,14 @@ public class InvertedIndex
     {
         private final Map<WordAndFilename, Integer> counts = new HashMap<>();
 
+        // Memory management
+        private final Runtime runtime = Runtime.getRuntime();
+        private int observedLines = 0;
+        private static final int CHECK_FREQUENCY = 10000;
+        private static final float MEMORY_THRESHOLD = 0.8f;
+
         public void map(FilenameAndOffset key, Text value, Context context)
+                throws IOException, InterruptedException
         {
             String filename = key.getFilename();
             StringTokenizer itr = new StringTokenizer(value.toString());
@@ -91,21 +98,29 @@ public class InvertedIndex
             {
                 String token = itr.nextToken().toLowerCase()
                         .replaceAll(matchPunctuation, "");
-                if (token.isEmpty())
-                {
-                    continue;
-                }
-
-                // If memory becomes a problem, a solution might be to flush
-                //  the counts map every N (to be determined) tokens
+                if (token.isEmpty()) { continue; }
                 WordAndFilename wordAndFilename = new WordAndFilename(token, filename);
                 int previousCount = counts.getOrDefault(wordAndFilename, 0);
                 counts.put(wordAndFilename, previousCount + 1);
             }
+
+            if (observedLines % CHECK_FREQUENCY == 0)
+            {
+                context.getCounter("Memory Management",
+                        "Number of in-mapper combiner memory checks").increment(1);
+                float memoryUsageRatio =
+                        (float)(runtime.totalMemory() - runtime.freeMemory()) / runtime.maxMemory();
+                if (memoryUsageRatio > MEMORY_THRESHOLD)
+                {
+                    flushCounts(context);
+                    context.getCounter("Memory Management",
+                            "Number of in-mapper combiner flushes").increment(1);
+                }
+            }
+            observedLines++;
         }
 
-        @Override
-        protected void cleanup(Context context) throws IOException, InterruptedException
+        private void flushCounts(Context context) throws IOException, InterruptedException
         {
             Text word = new Text();
             FilenameAndCount result = new FilenameAndCount();
@@ -116,6 +131,13 @@ public class InvertedIndex
                 result.setCount(entry.getValue());
                 context.write(word, result);
             }
+            counts.clear();
+        }
+
+        @Override
+        protected void cleanup(Context context) throws IOException, InterruptedException
+        {
+            flushCounts(context);
         }
     }
 
@@ -189,7 +211,8 @@ public class InvertedIndex
         private static String buildOutputLine(Map<String, Integer> counts)
         {
             StringJoiner joiner = new StringJoiner("\t");
-            for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            for (Map.Entry<String, Integer> entry : counts.entrySet())
+            {
                 joiner.add(entry.getKey() + ":" + entry.getValue());
             }
             return joiner.toString();
