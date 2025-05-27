@@ -22,7 +22,8 @@ import org.apache.hadoop.util.GenericOptionsParser;
  */
 public class InvertedIndex
 {
-    private static final String matchPunctuation = "(^'+)|('+[^A-Za-z']+)";
+    // A bit rough but works well
+    private static final String nonLetters = "[^A-Za-z]+";
 
     /**
      * For each input line of text, it splits the line into words,
@@ -55,7 +56,7 @@ public class InvertedIndex
             while (itr.hasMoreTokens())
             {
                 String token = itr.nextToken().toLowerCase()
-                        .replaceAll(matchPunctuation, "");
+                        .replaceAll(nonLetters, "");
                 if (token.isEmpty()) { continue; }
                 word.set(token);
                 one.setFilename(filename);
@@ -97,7 +98,7 @@ public class InvertedIndex
             while (itr.hasMoreTokens())
             {
                 String token = itr.nextToken().toLowerCase()
-                        .replaceAll(matchPunctuation, "");
+                        .replaceAll(nonLetters, "");
                 if (token.isEmpty()) { continue; }
                 WordAndFilename wordAndFilename = new WordAndFilename(token, filename);
                 int previousCount = counts.getOrDefault(wordAndFilename, 0);
