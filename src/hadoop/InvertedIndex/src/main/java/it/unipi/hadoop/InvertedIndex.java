@@ -201,8 +201,8 @@ public class InvertedIndex
      *          cloud       [(file1.txt, 2), (file2.txt, 1)]
      *          computing   [(file1.txt, 1), (file2.txt, 1)]
      *      Output - Key::Text (a word), Value::Text (a formatted output string)
-     *          cloud       file1.txt:2 file2.txt:1
-     *          computing   file1.txt:2 file2.txt:1
+     *          cloud       "file1.txt:2 file2.txt:1"
+     *          computing   "file1.txt:1 file2.txt:1"
      */
     public static class MainReducer
             extends Reducer<Text, FilenameAndCount, Text, Text>
