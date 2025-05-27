@@ -22,6 +22,7 @@ import org.apache.hadoop.util.GenericOptionsParser;
  */
 public class InvertedIndex
 {
+    private static final String matchPunctuation = "(^'+)|('+[^A-Za-z']+)";
 
     /**
      * For each input line of text, it splits the line into words,
@@ -49,14 +50,12 @@ public class InvertedIndex
         public void map(FilenameAndOffset key, Text value, Context context)
                 throws IOException, InterruptedException
         {
-            String filename = key.getFilename().toString();
+            String filename = key.getFilename();
             StringTokenizer itr = new StringTokenizer(value.toString());
             while (itr.hasMoreTokens())
             {
                 String token = itr.nextToken().toLowerCase()
-                        .replaceAll("([^A-Za-z'])+", "");
-                // A better, but more complex, regex string could be
-                //  "(?<![A-Za-z])'+|'+(?![A-Za-z])|[^A-Za-z']+"
+                        .replaceAll(matchPunctuation, "");
                 if (token.isEmpty()) { continue; }
                 word.set(token);
                 one.setFilename(filename);
@@ -86,12 +85,12 @@ public class InvertedIndex
 
         public void map(FilenameAndOffset key, Text value, Context context)
         {
-            String filename = key.getFilename().toString();
+            String filename = key.getFilename();
             StringTokenizer itr = new StringTokenizer(value.toString());
             while (itr.hasMoreTokens())
             {
                 String token = itr.nextToken().toLowerCase()
-                        .replaceAll("([^A-Za-z'])+", "");
+                        .replaceAll(matchPunctuation, "");
                 if (token.isEmpty())
                 {
                     continue;
@@ -224,9 +223,20 @@ public class InvertedIndex
 
         // Parse CLI arguments
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
-        if (otherArgs.length != 2)
+        if (otherArgs.length != 5)
         {
-            System.err.println("Usage: InvertedIndex <input folder> <output folder> ");
+            System.err.println(
+                    "Usage: InvertedIndex " +
+                            "<input folder> " +
+                            "<output folder> " +
+                            "<configuration> " +
+                            "<number of reducers> " +
+                            "<max input split size (MB)> " +
+                    " Configuration can be: \n" +
+                    "  0) SimpleMapper\n" +
+                    "  1) SimpleMapper + ExternalCombiner\n" +
+                    "  2) CombinerMapper\n" +
+                    "  3) CombinerMapper + ExternalCombiner\n");
             System.exit(1);
         }
 
@@ -238,17 +248,32 @@ public class InvertedIndex
          * Therefore, we had to re-define the class to keep track of the filenames.
          */
         job.setInputFormatClass(NameAwareCombineTextInputFormat.class);
-        NameAwareCombineTextInputFormat.setMaxInputSplitSize(job, 64 * 1024 * 1024); // 64MB
+        int maxInputSplitSize = Integer.parseInt(otherArgs[4]) * 1024 * 1024;
+        NameAwareCombineTextInputFormat.setMaxInputSplitSize(job, maxInputSplitSize);
 
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
         FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 
         job.setJarByClass(InvertedIndex.class);
-            // You can choose either SimpleMapper or CombinerMapper
-        job.setMapperClass(CombinerMapper.class);
         job.setReducerClass(MainReducer.class);
-            // Optional: Use an external combiner (should be disabled if CombinerMapper is used)
-        //job.setCombinerClass(ExternalCombiner.class);
+
+        int configuration = Integer.parseInt(otherArgs[2]);
+        switch (configuration)
+        {
+            case 0:
+                job.setMapperClass(SimpleMapper.class);
+                break;
+            case 1:
+                job.setMapperClass(SimpleMapper.class);
+                job.setCombinerClass(ExternalCombiner.class);
+                break;
+            case 2:
+                job.setMapperClass(CombinerMapper.class);
+                break;
+            case 3:
+                job.setMapperClass(CombinerMapper.class);
+                job.setCombinerClass(ExternalCombiner.class);
+        }
 
         // Define the (Key, Value) output types of the mappers
         job.setMapOutputKeyClass(Text.class);
@@ -259,7 +284,8 @@ public class InvertedIndex
         job.setOutputValueClass(Text.class);
 
             // Optional: use more than one reducer
-        //job.setNumReduceTasks(N);
+        int numReducers = Integer.parseInt(otherArgs[3]);
+        job.setNumReduceTasks(numReducers);
 
         // Start the job
         System.exit(job.waitForCompletion(true) ? 0 : 1);
