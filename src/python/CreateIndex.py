@@ -1,18 +1,27 @@
 from os import listdir
 from os.path import isfile
-from re import sub
+from re import compile
+from sys import argv
 
+if len(argv) < 3:
+    exit(1)
+
+dir = str(argv[1])
+out = str(argv[2])
+
+pattern = compile("[^A-Za-z]+")
 index = dict()
 
-for file in listdir(path='./TestData'):
-    
-    if isfile("./TestData/"+file):
+for file in listdir(path=dir):
 
-        with open("./TestData/"+file) as f:
+    if isfile(dir+file):
+
+        with open(dir+file, "r") as f:
+
             for x in f:
                 for word in x.split():
                     
-                    word = sub('[^A-Za-z0-9\']+', '', word)
+                    word = pattern.sub('', word)
 
                     if len(word) == 0:
                         continue
@@ -27,7 +36,7 @@ for file in listdir(path='./TestData'):
                     else:
                         index[word].update([(file, 1)])
 
-indexFile=open("./IndexFiles/index.txt", "w")
+indexFile=open(out, "w")
 
 for word, list in index.items():
     out = word
